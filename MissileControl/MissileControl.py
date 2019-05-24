@@ -1,5 +1,5 @@
 """
-    #MissileControl (program v.1.4.0)
+    #MissileControl (program v.1.4.2)
     Copyright (C) 2018  Ryan I Callahan
 
     This program is free software: you can redistribute it and/or modify
@@ -33,6 +33,7 @@ basesprite = pygame.image.load("base.png")
 reticlesprite = pygame.image.load("reticle.png")
 enemysprite = pygame.image.load("enemy.png")
 rocketsprite = pygame.image.load("rocket.png")
+titleimage = pygame.image.load("title.png")
 
 window_width = 700
 window_height = 800
@@ -54,6 +55,9 @@ lives = 3
 speed = 2
 enemieskilled = 0
 missilesshot = 0
+reset_game_timer = 0
+
+play = False
 
 
 class Entity(pygame.sprite.Sprite):
@@ -326,6 +330,9 @@ class Base(Entity):
     def returnactive(self):
         return self.active
 
+    def turnactive(self):
+        self.active = True
+
 
     def get_rockets(self):
         return self.rocket_list
@@ -441,6 +448,7 @@ class Button:
 
 
 def reset():
+    global enemy_spawn_rate, maxbullets, bulletsout, score, enemies, lives, speed, enemieskilled, missilesshot, reset_game_timer
 
     for rocket in all_sprites_list:
         all_sprites_list.remove(rocket)
@@ -453,12 +461,30 @@ def reset():
 
     all_sprites_list.add(base1)
     base1.generate_rockets()
+    base1.turnactive()
 
     all_sprites_list.add(base2)
     base2.generate_rockets()
+    base2.turnactive()
 
     all_sprites_list.add(base3)
     base3.generate_rockets()
+    base3.turnactive()
+
+    enemy_spawn_rate = 5000
+    maxbullets = 3
+    bulletsout = 0
+    score = 0
+    enemies = 10
+    lives = 3
+    speed = 2
+    enemieskilled = 0
+    missilesshot = 0
+    reset_game_timer = 0
+
+    pygame.mixer.music.stop()
+    pygame.mixer.music.load("mainmusic.mp3")
+    pygame.mixer.music.play(-1, 0.0)
 
 
 
@@ -478,169 +504,200 @@ all_sprites_list.add(reticle)
 
 pygame.time.set_timer(pygame.USEREVENT +1, 1000)
 
-scoretext = Button(1, 1, 25, 70, (0,0,0))
+scoredisplay = Button(1, 1, 25, 70, (0,0,0))
 
-pygame.mixer.music.load("mainmusic.mp3")
-pygame.mixer.music.play(-1,0.0)
 reset()
-
 while True:
-    if lives > 0:
-        #Ensures reticle appears over everything else
-        all_sprites_list.remove(reticle)
+    if play == True:
+        if lives > 0:
+            #Ensures reticle appears over everything else
+            all_sprites_list.remove(reticle)
 
-        screen.fill((0,0,0))
-        screen.blit(groundsprite, (0,(window_height-groundsprite.get_height())))
-        scoretext.draw()
-        scoretext.write((255, 255, 255), ("Score: "+str(score)), "Arial", 15)
+            screen.fill((0,0,0))
+            screen.blit(groundsprite, (0,(window_height-groundsprite.get_height())))
+            scoredisplay.draw()
+            scoredisplay.write((255, 255, 255), ("Score: "+str(score)), "Arial", 15)
 
+            for event in pygame.event.get():
+                if event.type == QUIT:
+                    pygame.quit()
+                    sys.exit()
+                elif event.type == MOUSEMOTION:
+                    mousex, mousey = event.pos
+                    reticle.reticlemove(mousex, mousey)
+                elif event.type == MOUSEBUTTONDOWN:
+                    reticle.click(pygame.mouse.get_pos())
+                elif event.type == pygame.USEREVENT + 1:
+                    if enemies != 0:
+                        if firstwave == True:
+                            wave = random.randint(3, 5)
+                            base1active = base1.returnactive()
+                            base2active = base2.returnactive()
+                            base3active = base3.returnactive()
+                            for x in range(0,wave):
+                                target = random.randint(1, 3)
+                                enemyx = random.randint(0, (window_width - enemysprite.get_width()))
+                                if target == 1:
+                                    if base1active == True:
+                                        endx = random.randint(0, int(window_width/3))
+                                    elif base2active == True:
+                                        endx = random.randint(int(window_height/3), int(2*window_width/3))
+                                    elif base3active == True:
+                                        endx = random.randint(int(2*window_width/3), window_width)
+                                elif target == 2:
+                                    if base2active == True:
+                                        endx = random.randint(int(window_height / 3), int(2 * window_width / 3))
+                                    elif base1active == True:
+                                        endx = random.randint(0, int(window_width / 3))
+                                    elif base3active == True:
+                                        endx = random.randint(int(2*window_width/3), window_width)
+                                elif target == 3:
+                                    if base3active == True:
+                                        endx = random.randint(int(2 * window_width / 3), window_width)
+                                    elif base2active == True:
+                                        endx = random.randint(int(window_height / 3), int(2 * window_width / 3))
+                                    elif base1active == True:
+                                        endx = random.randint(0, int(window_width / 3))
+                                enemy = Enemy(enemyx, 10, enemysprite.get_height(), enemysprite.get_width(), enemysprite, (endx
+                                                                                                                           , 800), speed)
+                                all_sprites_list.add(enemy)
+                            pygame.time.set_timer(pygame.USEREVENT + 1, enemy_spawn_rate)
+                            firstwave = False
+                            enemies -= wave
+                        else:
+                            wave = random.randint(3, 5)
+                            base1active = base1.returnactive()
+                            base2active = base2.returnactive()
+                            base3active = base3.returnactive()
+                            for x in range(0, wave):
+                                target = random.randint(1, 3)
+                                enemyx = random.randint(0, (window_width - enemysprite.get_width()))
+
+                                if target == 1:
+                                    if base1active == True:
+                                        endx = random.randint(0, int(window_width/3))
+                                    elif base2active == True:
+                                        endx = random.randint(int(window_height/3), int(2*window_width/3))
+                                    elif base3active == True:
+                                        endx = random.randint(int(2*window_width/3), window_width)
+                                elif target == 2:
+                                    if base2active == True:
+                                        endx = random.randint(int(window_height / 3), int(2 * window_width / 3))
+                                    elif base1active == True:
+                                        endx = random.randint(0, int(window_width / 3))
+                                    elif base3active == True:
+                                        endx = random.randint(int(2*window_width/3), window_width)
+                                elif target == 3:
+                                    if base3active == True:
+                                        endx = random.randint(int(2 * window_width / 3), window_width)
+                                    elif base2active == True:
+                                        endx = random.randint(int(window_height / 3), int(2 * window_width / 3))
+                                    elif base1active == True:
+                                        endx = random.randint(0, int(window_width / 3))
+                                enemy = Enemy(enemyx, 10, enemysprite.get_height(), enemysprite.get_width(), enemysprite, (endx
+                                                                                                                           ,
+                                                                                                                           800), speed)
+                                all_sprites_list.add(enemy)
+                            #ENDLESS MODE enemies -= 1
+                            pygame.time.set_timer(pygame.USEREVENT + 1, 5000)
+                    else:
+                        print("no more enemies")
+
+
+            speed += .0005
+            if enemy_spawn_rate >= 2500:
+                enemy_spawn_rate -= 1
+            #Ensures reticle appears over everything else
+            all_sprites_list.add(reticle)
+            all_sprites_list.update()
+
+
+        else:
+            if losemusic == True:
+                pygame.mixer.music.stop()
+                pygame.mixer.music.load("lose.mp3")
+                pygame.mixer.music.play(-1,0.0)
+                losemusic = False
+            all_sprites_list.empty()
+
+            screen.fill((200,0,55))
+            losetext = Button(0,-50, window_height, window_width, (200,0,55))
+            losetext.draw()
+            losetext.write((0, 0, 0), "YOU LOSE", "Arial", 50)
+
+            scoretext = Button(350, 410, 0, 0, (200,0,55))
+            scoretext.draw()
+            scorestring = ("YOUR SCORE WAS " + str(score))
+            scoretext.write((0, 0, 0), scorestring, "Arial", 35)
+
+            scoretext = Button(350, 460, 0, 0, (200,0,55))
+            scoretext.draw()
+            scorestring = ("YOU SHOT " + str(missilesshot) + " MISSILES")
+            scoretext.write((0, 0, 0), scorestring, "Arial", 35)
+
+            scoretext = Button(350, 510, 0, 0, (200,0,55))
+            scoretext.draw()
+            scorestring = ("YOU KILLED " + str(enemieskilled) + " ENEMIES")
+            scoretext.write((0, 0, 0), scorestring, "Arial", 35)
+
+            for event in pygame.event.get():
+                if event.type == QUIT:
+                    pygame.quit()
+                    sys.exit()
+                if event.type == pygame.KEYUP:
+                    if event.key == pygame.K_SPACE:
+                        play = True
+                elif event.type == MOUSEMOTION:
+                    mousex, mousey = event.pos
+                    reticle.reticlemove(mousex, mousey)
+            all_sprites_list.add(reticle)
+            all_sprites_list.update()
+
+            if highscores_update == True:
+                score1 = score
+                try:
+                    with open("scores.txt", "r") as high_scores:
+                        current_scores = high_scores.read().split("\n")
+                except FileNotFoundError:
+                    with open("scores.txt", "w") as high_scores:
+                        high_scores.write("0\n0\n0\n0\n0\n0\n0\n0\n0\n0")
+                    with open("scores.txt", "r") as high_scores:
+                        current_scores = high_scores.read().split("\n")
+                for scores in range(len(current_scores)):
+                    if int(score1) >= int(current_scores[scores]):
+                        score1, current_scores[scores] = str(current_scores[scores]), str(score1)
+                        break
+                with open("scores.txt", "w") as high_scores:
+                    high_scores.write("\n".join([str(scores) for scores in current_scores]))
+                highscores_update = False
+            string = ("High Scores | " + " | ".join(current_scores) + " | ")
+            scoretext = Button(350, 560, 0, 0, (255, 0, 0))
+            scoretext.draw()
+            scoretext.write((0, 0, 0), string, "Arial", 20)
+            if reset_game_timer >= 1000:
+                reset()
+                play = False
+            else:
+                reset_game_timer += 1
+
+
+    if play == False:
+        screen.blit(titleimage, (0, 0))
         for event in pygame.event.get():
             if event.type == QUIT:
                 pygame.quit()
                 sys.exit()
+            if event.type == pygame.KEYUP:
+                if event.key == pygame.K_SPACE:
+                    play = True
             elif event.type == MOUSEMOTION:
                 mousex, mousey = event.pos
                 reticle.reticlemove(mousex, mousey)
-            elif event.type == MOUSEBUTTONDOWN:
-                reticle.click(pygame.mouse.get_pos())
-            elif event.type == pygame.USEREVENT + 1:
-                if enemies != 0:
-                    if firstwave == True:
-                        wave = random.randint(3, 5)
-                        base1active = base1.returnactive()
-                        base2active = base2.returnactive()
-                        base3active = base3.returnactive()
-                        for x in range(0,wave):
-                            target = random.randint(1, 3)
-                            enemyx = random.randint(0, (window_width - enemysprite.get_width()))
-                            if target == 1:
-                                if base1active == True:
-                                    endx = random.randint(0, int(window_width/3))
-                                elif base2active == True:
-                                    endx = random.randint(int(window_height/3), int(2*window_width/3))
-                                elif base3active == True:
-                                    endx = random.randint(int(2*window_width/3), window_width)
-                            elif target == 2:
-                                if base2active == True:
-                                    endx = random.randint(int(window_height / 3), int(2 * window_width / 3))
-                                elif base1active == True:
-                                    endx = random.randint(0, int(window_width / 3))
-                                elif base3active == True:
-                                    endx = random.randint(int(2*window_width/3), window_width)
-                            elif target == 3:
-                                if base3active == True:
-                                    endx = random.randint(int(2 * window_width / 3), window_width)
-                                elif base2active == True:
-                                    endx = random.randint(int(window_height / 3), int(2 * window_width / 3))
-                                elif base1active == True:
-                                    endx = random.randint(0, int(window_width / 3))
-                            enemy = Enemy(enemyx, 10, enemysprite.get_height(), enemysprite.get_width(), enemysprite, (endx
-                                                                                                                       , 800), speed)
-                            all_sprites_list.add(enemy)
-                        pygame.time.set_timer(pygame.USEREVENT + 1, enemy_spawn_rate)
-                        firstwave = False
-                        enemies -= wave
-                    else:
-                        wave = random.randint(3, 5)
-                        base1active = base1.returnactive()
-                        base2active = base2.returnactive()
-                        base3active = base3.returnactive()
-                        for x in range(0, wave):
-                            target = random.randint(1, 3)
-                            enemyx = random.randint(0, (window_width - enemysprite.get_width()))
-
-                            if target == 1:
-                                if base1active == True:
-                                    endx = random.randint(0, int(window_width/3))
-                                elif base2active == True:
-                                    endx = random.randint(int(window_height/3), int(2*window_width/3))
-                                elif base3active == True:
-                                    endx = random.randint(int(2*window_width/3), window_width)
-                            elif target == 2:
-                                if base2active == True:
-                                    endx = random.randint(int(window_height / 3), int(2 * window_width / 3))
-                                elif base1active == True:
-                                    endx = random.randint(0, int(window_width / 3))
-                                elif base3active == True:
-                                    endx = random.randint(int(2*window_width/3), window_width)
-                            elif target == 3:
-                                if base3active == True:
-                                    endx = random.randint(int(2 * window_width / 3), window_width)
-                                elif base2active == True:
-                                    endx = random.randint(int(window_height / 3), int(2 * window_width / 3))
-                                elif base1active == True:
-                                    endx = random.randint(0, int(window_width / 3))
-                            enemy = Enemy(enemyx, 10, enemysprite.get_height(), enemysprite.get_width(), enemysprite, (endx
-                                                                                                                       ,
-                                                                                                                       800), speed)
-                            all_sprites_list.add(enemy)
-                        #ENDLESS MODE enemies -= 1
-                        pygame.time.set_timer(pygame.USEREVENT + 1, 5000)
-                else:
-                    print("no more enemies")
-
-
-        speed += .001
-        if enemy_spawn_rate >= 2500:
-            enemy_spawn_rate -= 1
-        #Ensures reticle appears over everything else
         all_sprites_list.add(reticle)
         all_sprites_list.update()
 
 
-    else:
-        if losemusic == True:
-            pygame.mixer.music.stop()
-            pygame.mixer.music.load("lose.mp3")
-            pygame.mixer.music.play(-1,0.0)
-            losemusic = False
-        pygame.mouse.set_visible(True)
-        all_sprites_list.empty()
-
-        screen.fill((255,0,0))
-        losetext = Button(0,-50, window_height, window_width, (255, 0, 0))
-        losetext.draw()
-        losetext.write((0, 0, 0), "YOU LOSE", "Arial", 50)
-
-        scoretext = Button(350, 410, 0, 0, (255, 0, 0))
-        scoretext.draw()
-        scorestring = ("YOUR SCORE WAS " + str(score))
-        scoretext.write((0, 0, 0), scorestring, "Arial", 35)
-
-        scoretext = Button(350, 460, 0, 0, (255, 0, 0))
-        scoretext.draw()
-        scorestring = ("YOU SHOT " + str(missilesshot) + " MISSILES")
-        scoretext.write((0, 0, 0), scorestring, "Arial", 35)
-
-        scoretext = Button(350, 510, 0, 0, (255, 0, 0))
-        scoretext.draw()
-        scorestring = ("YOU KILLED " + str(enemieskilled) + " ENEMIES")
-        scoretext.write((0, 0, 0), scorestring, "Arial", 35)
-
-        if highscores_update == True:
-            score1 = score
-            try:
-                with open("scores.txt", "r") as high_scores:
-                    current_scores = high_scores.read().split("\n")
-            except FileNotFoundError:
-                with open("scores.txt", "w") as high_scores:
-                    high_scores.write("0\n0\n0\n0\n0\n0\n0\n0\n0\n0")
-                with open("scores.txt", "r") as high_scores:
-                    current_scores = high_scores.read().split("\n")
-            for scores in range(len(current_scores)):
-                if int(score1) >= int(current_scores[scores]):
-                    score1, current_scores[scores] = str(current_scores[scores]), str(score1)
-                    break
-            with open("scores.txt", "w") as high_scores:
-                high_scores.write("\n".join([str(scores) for scores in current_scores]))
-            highscores_update = False
-        string = ("High Scores | " + " | ".join(current_scores) + " | ")
-        scoretext = Button(350, 560, 0, 0, (255, 0, 0))
-        scoretext.draw()
-        scoretext.write((0, 0, 0), string, "Arial", 20)
-
-
 
         #todo Display high scores
-    pygame.display.update()
+    pygame.display.flip()
     clock.tick(tick)
